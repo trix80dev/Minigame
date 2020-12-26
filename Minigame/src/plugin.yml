@@ -1,0 +1,5 @@
+name: Minigame
+author: zzolt
+version: 1.0.0
+main: me.zzolt.MinigameAPI.MinigameAPI
+api: ["1.0.11"]
