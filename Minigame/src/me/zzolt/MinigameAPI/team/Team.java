@@ -2,22 +2,29 @@ package me.zzolt.MinigameAPI.team;
 
 import java.util.ArrayList;
 
+import cn.nukkit.utils.TextFormat;
+
 public class Team {
 	
 	private ArrayList<MinigamePlayer> players = new ArrayList<MinigamePlayer>();
 	private ArrayList<MinigamePlayer> alivePlayers = new ArrayList<MinigamePlayer>();
 	
 	private String name;
-	
+	private TextFormat color;
 	private int maxPlayers;
 	
-	public Team(String name, int maxPlayers) {
+	public Team(String name, TextFormat color, int maxPlayers) {
+		this.color = color;
 		this.name = name;
 		this.maxPlayers = maxPlayers;
 	}
 	
 	public String getName() {
 		return name;
+	}
+	
+	public TextFormat getColor() {
+		return color;
 	}
 	
 	public ArrayList<MinigamePlayer> getPlayers() {

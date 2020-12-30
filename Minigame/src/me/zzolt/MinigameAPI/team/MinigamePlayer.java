@@ -11,6 +11,7 @@ import cn.nukkit.utils.TextFormat;
 import me.zzolt.MinigameAPI.MinigameAPI;
 import me.zzolt.MinigameAPI.event.PlayerScoreChangeEvent;
 import me.zzolt.MinigameAPI.event.PlayerStateChangeEvent;
+import me.zzolt.MinigameAPI.map.Map;
 import me.zzolt.MinigameAPI.minigame.Minigame;
 import me.zzolt.MinigameAPI.util.PlayerUtil;
 
@@ -24,6 +25,8 @@ public class MinigamePlayer extends Player {
 	private boolean isInGame;
 	private Team team;
 	private PlayerState state;
+	private Map votedMap;
+	public boolean hasSpawned = false;
 	
 	private Vector3 firstSpawnLocation;
 	private Vector3 respawnLocation;
@@ -157,6 +160,14 @@ public class MinigamePlayer extends Player {
 	
 	public void setRespawnTime(int seconds) {
 		this.respawnTime = seconds;
+	}
+	
+	public Map getVotedMap() {
+		return votedMap;
+	}
+	
+	public void setVotedMap(Map map) {
+		votedMap = map;
 	}
 	
 	public enum PlayerState {

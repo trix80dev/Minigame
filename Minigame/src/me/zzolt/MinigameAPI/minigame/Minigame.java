@@ -1,11 +1,16 @@
 package me.zzolt.MinigameAPI.minigame;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
+import cn.nukkit.item.Item;
+import cn.nukkit.level.Level;
 import cn.nukkit.scheduler.NukkitRunnable;
 import cn.nukkit.utils.TextFormat;
 import me.zzolt.MinigameAPI.MinigameAPI;
+import me.zzolt.MinigameAPI.map.EntitySpawnPosition;
 import me.zzolt.MinigameAPI.map.Map;
+import me.zzolt.MinigameAPI.map.SpawnPosition;
 import me.zzolt.MinigameAPI.team.MinigamePlayer;
 import me.zzolt.MinigameAPI.team.Team;
 import me.zzolt.MinigameAPI.util.MinigameCountdown;
@@ -17,6 +22,8 @@ public class Minigame {
 	private ArrayList<Team> teams = new ArrayList<Team>();
 	private ArrayList<Team> aliveTeams = new ArrayList<Team>();
 	private ArrayList<Map> maps;
+	private Map chosenMap;
+	private Level lobby;
 	
 	private int scoreToWin;
 	private boolean lastTeamStanding;
@@ -24,8 +31,9 @@ public class Minigame {
 	private int countdownPlayers;
 	private int maxPlayers;
 	
-	public Minigame(ArrayList<Map> maps, int countdownPlayers, int maxPlayers, int scoreToWin, boolean lastTeamStanding, ArrayList<Team> teams) {
+	public Minigame(ArrayList<Map> maps, Level lobby, int countdownPlayers, int maxPlayers, int scoreToWin, boolean lastTeamStanding, ArrayList<Team> teams) {
 		this.maps = maps;
+		this.lobby = lobby;
 		this.countdownPlayers = countdownPlayers;
 		this.maxPlayers = maxPlayers;
 		this.scoreToWin = scoreToWin;
@@ -55,6 +63,7 @@ public class Minigame {
 		players.add(player);
 		player.setInGame(true);
 		player.setMinigame(this);
+		player.teleport(lobby.getSpawnLocation());
 		if(players.size() >= countdownPlayers && getState() == MinigameState.LOBBY) {
 			startCountdown();
 		}
@@ -86,6 +95,30 @@ public class Minigame {
 		}
 	}
 	
+	public Level getLobby() {
+		return lobby;
+	}
+	
+	public ArrayList<Map> getMaps() {
+		return maps;
+	}
+	
+	public void addVote(MinigamePlayer player, String map) {
+		if(player.getVotedMap() != null) {
+			removeVote(player.getVotedMap());
+		}
+		for(Map m : maps) {
+			if(m.getName() == map) {
+				player.setVotedMap(m);
+				m.setVotes(m.getVotes() + 1);
+			}
+		}
+	}
+	
+	public void removeVote(Map map) {
+		map.setVotes(map.getVotes() - 1);
+	}
+	
 	public int getScoreToWin() {
 		return scoreToWin;
 	}
@@ -102,6 +135,15 @@ public class Minigame {
 		this.lastTeamStanding = lastTeamStanding;
 	}
 	
+	public void chooseMap() {
+		Map voted = null;
+		for(Map map : maps) {
+			if(voted == null) voted = map;
+			if(voted.getVotes() < map.getVotes()) voted = map;
+		}
+		chosenMap = voted;
+	}
+	
 	public void startCountdown() {
 		setState(MinigameState.COUNTDOWN);
 		new MinigameCountdown(20) {
@@ -112,6 +154,16 @@ public class Minigame {
 						player.sendMessage(TextFormat.GRAY + "Countdown has been cancelled!");
 					}
 					this.cancel();
+				}
+				if(seconds == 3) {
+					chooseMap();
+					for(MinigamePlayer player : players) {
+						player.sendMessage(chosenMap.getName() + " won with " + chosenMap.getVotes() + "votes");
+						player.setVotedMap(null);
+					}
+					for(Map map : maps) {
+						map.setVotes(0);
+					}
 				}
 				for (MinigamePlayer player : players) {
 					player.sendActionBar(TextFormat.GREEN + "Game starting in " + seconds + " seconds");
@@ -129,11 +181,35 @@ public class Minigame {
 		setState(MinigameState.STARTING);
 		setTeams(false);
 		for(MinigamePlayer player : players) {
-			if(player.getTeam().getName() != "")
+			player.setDisplayName(player.getTeam().getColor() + player.getDisplayName());
+			player.setLevel(chosenMap.getLevel());
+						if(player.getTeam().getName() != "")
 				player.sendMessage(TextFormat.GREEN + "You are on team " + player.getTeam().getName());
 			player.sendActionBar(TextFormat.GREEN + "Starting in 5 seconds");
 			player.setImmobile();
 		}
+		for(SpawnPosition pos : chosenMap.getSpawnPositions()) {
+			if(pos instanceof EntitySpawnPosition) {}
+			else {
+				if(pos.team != null) {
+					for(MinigamePlayer player : players) {
+						if(player.getTeam() == pos.team) {
+							player.teleport(pos.position);
+							player.hasSpawned = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+		/*for(MinigamePlayer player : players) {
+			if(player.hasSpawned) break;
+			for(SpawnPosition pos : chosenMap.getSpawnPositions()) {
+				if(pos.team == null) {
+					
+				}
+			}
+		}*/
 		new NukkitRunnable() {
 			int seconds = 5;
 			@Override
@@ -181,6 +257,7 @@ public class Minigame {
 	public void showMinigameStats() {
 		setState(MinigameState.ENDED);
 		for(MinigamePlayer player : players) {
+			player.teleport(lobby.getSpawnLocation());
 			player.sendActionBar(TextFormat.YELLOW + "Finding new game in 15 seconds");
 		}
 		new NukkitRunnable() {
@@ -208,6 +285,14 @@ public class Minigame {
 			player.setTeam(null);
 		}
 		setState(MinigameState.RESTARTING);
+	}
+	
+	public final HashMap<Integer, Item> lobbyInventory() {
+		HashMap<Integer, Item> map = new HashMap<Integer, Item>();
+		Item mapSelector = new Item(Item.PAPER);
+		mapSelector.setCustomName("Vote for Map");
+		map.put(0, mapSelector);
+		return map;
 	}
 	
 	public enum MinigameState {
